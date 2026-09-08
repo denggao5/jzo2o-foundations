@@ -155,4 +155,40 @@ public class ServeServiceImpl extends ServiceImpl<ServeMapper, Serve> implements
         }
         return baseMapper.selectById(id);
     }
+
+    @Override
+    @Transactional
+    public Serve onSale(Long id){
+        //1.判断区域服务信息是否存在
+        Serve serve = baseMapper.selectById(id);
+        if(ObjectUtil.isNull(serve)){
+            throw new ForbiddenOperationException("区域服务不存在");
+        }
+        //2.判断区域服务上架状态，只有在草稿或下架状态方可上架
+        Integer saleStatus = serve.getSaleStatus();
+        if (!(saleStatus==FoundationStatusEnum.INIT.getStatus() || saleStatus==FoundationStatusEnum.DISABLE.getStatus())) {
+            throw new ForbiddenOperationException("草稿或下架状态方可上架");
+        }
+        //3.判断服务项信息是否存在
+        Long serveItemId = serve.getServeItemId();
+        ServeItem serveItem = serveItemMapper.selectById(serveItemId);
+        if(ObjectUtil.isNull(serveItem)){
+            throw new ForbiddenOperationException("所属服务项不存在");
+        }
+        //4.判断服务项是否为启用状态，只有在启用状态方可上架
+        Integer activeStatus = serveItem.getActiveStatus();
+        if (!(FoundationStatusEnum.ENABLE.getStatus()==activeStatus)) {
+            throw new ForbiddenOperationException("服务项为启用状态方可上架");
+        }
+
+        //5.更新区域服务上架状态
+        boolean update = lambdaUpdate()
+                .eq(Serve::getId, id)
+                .set(Serve::getSaleStatus, FoundationStatusEnum.ENABLE.getStatus())
+                .update();
+        if(!update){
+            throw new CommonException("启动服务失败");
+        }
+        return baseMapper.selectById(id);
+    }
 }
