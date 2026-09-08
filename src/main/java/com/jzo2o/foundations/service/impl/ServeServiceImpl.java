@@ -3,6 +3,7 @@ package com.jzo2o.foundations.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.jzo2o.common.expcetions.CommonException;
 import com.jzo2o.common.expcetions.ForbiddenOperationException;
 import com.jzo2o.common.model.PageResult;
 import com.jzo2o.foundations.enums.FoundationStatusEnum;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -34,6 +36,9 @@ public class ServeServiceImpl extends ServiceImpl<ServeMapper, Serve> implements
 
     @Resource
     private RegionMapper regionMapper;
+
+    @Resource
+    private ServeMapper serveMapper;
 
     /**
      * 分页查询服务列表
@@ -136,4 +141,18 @@ public class ServeServiceImpl extends ServiceImpl<ServeMapper, Serve> implements
 //
 //        saveBatch(serveList);
 //    }
+
+    @Override
+    @Transactional
+    public Serve update(Long id, BigDecimal price) {
+        //1.更新服务价格
+        boolean update = lambdaUpdate()
+                .eq(Serve::getId, id)
+                .set(Serve::getPrice, price)
+                .update();
+        if(!update){
+            throw new CommonException("修改服务价格失败");
+        }
+        return baseMapper.selectById(id);
+    }
 }
