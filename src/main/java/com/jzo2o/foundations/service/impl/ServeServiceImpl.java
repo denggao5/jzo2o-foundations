@@ -211,4 +211,28 @@ public class ServeServiceImpl extends ServiceImpl<ServeMapper, Serve> implements
             throw new CommonException("删除区域服务失败");
         }
     }
+
+    @Override
+    @Transactional
+    public Serve offSale(Long id) {
+        //1.判断区域服务信息是否存在
+        Serve serve = baseMapper.selectById(id);
+        if(ObjectUtil.isNull(serve)){
+            throw new ForbiddenOperationException("区域服务不存在");
+        }
+        //2.判断区域服务当前状态，只有在上架态才能下架
+        Integer saleStatus = serve.getSaleStatus();
+        if (!(saleStatus == FoundationStatusEnum.ENABLE.getStatus())) {
+            throw new ForbiddenOperationException("上架状态方可下架");
+        }
+        //3.更新区域服务状态为下架
+        boolean update = lambdaUpdate()
+                .eq(Serve::getId, id)
+                .set(Serve::getSaleStatus, FoundationStatusEnum.DISABLE.getStatus())
+                .update();
+        if(!update){
+            throw new CommonException("下架服务失败");
+        }
+        return baseMapper.selectById(id);
+    }
 }
