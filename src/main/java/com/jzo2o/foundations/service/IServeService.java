@@ -49,4 +49,11 @@ public interface IServeService extends IService<Serve> {
      * @param id         服务id
      */
     Serve onSale(Long id);
+
+    /**
+     * 删除
+     *
+     * @param id         服务id
+     */
+    void delete(Long id);
 }

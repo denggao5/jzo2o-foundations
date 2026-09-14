@@ -62,4 +62,15 @@ public class ServeController {
     public void onSale(@PathVariable("id") Long id) {
         serveService.onSale(id);
     }
+
+    @DeleteMapping("/{id}")
+    @ApiOperation("区域服务删除")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "id", value = "服务id", required = true, dataTypeClass = Long.class),
+    })
+    public void delete(@PathVariable("id") Long id) {
+        serveService.delete(id);
+    }
+
+
 }

@@ -191,4 +191,24 @@ public class ServeServiceImpl extends ServiceImpl<ServeMapper, Serve> implements
         }
         return baseMapper.selectById(id);
     }
+
+    @Override
+    @Transactional
+    public void delete(Long id) {
+        //1.判断区域服务信息是否存在
+        Serve serve = baseMapper.selectById(id);
+        if(ObjectUtil.isNull(serve)){
+            throw new ForbiddenOperationException("区域服务不存在");
+        }
+        //2.判断区域服务当前状态，只有在草稿态才能删除
+        Integer saleStatus = serve.getSaleStatus();
+        if (!(saleStatus == FoundationStatusEnum.INIT.getStatus())) {
+            throw new ForbiddenOperationException("草稿状态方可删除");
+        }
+        //3.删除区域服务
+        int delete = baseMapper.deleteById(id);
+        if(delete!=1){
+            throw new CommonException("删除区域服务失败");
+        }
+    }
 }
