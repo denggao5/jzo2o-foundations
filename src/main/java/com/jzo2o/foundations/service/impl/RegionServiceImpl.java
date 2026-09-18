@@ -201,6 +201,7 @@ public class RegionServiceImpl extends ServiceImpl<RegionMapper, Region> impleme
             @CacheEvict(value = RedisConstants.CacheName.HOT_SERVE, key = "#id", beforeInvocation = true),
             @CacheEvict(value = RedisConstants.CacheName.SERVE_TYPE, key = "#id", beforeInvocation = true)
     })
+    @Transactional
     public void deactivate(Long id) {
         //区域信息
         Region region = baseMapper.selectById(id);
@@ -212,7 +213,16 @@ public class RegionServiceImpl extends ServiceImpl<RegionMapper, Region> impleme
         }
 
         //1.如果禁用区域下有上架的服务则无法禁用
-        //todo
+        LambdaQueryWrapper<Serve> serveQuery = Wrappers.<Serve>lambdaQuery()
+                .eq(Serve::getRegionId, id)
+                .eq(Serve::getSaleStatus, FoundationStatusEnum.ENABLE.getStatus())
+                .last("LIMIT 1");
+        Serve serve = serveMapper.selectOne(serveQuery);
+        if (serve != null) {
+            throw new ForbiddenOperationException("区域下有上架的服务无法禁用");
+        }
+
+
 //        int count = serveService.queryServeCountByRegionIdAndSaleStatus(id, FoundationStatusEnum.ENABLE.getStatus());
 //        if (count > 0) {
 //            throw new ForbiddenOperationException("区域下有上架的服务无法禁用");
