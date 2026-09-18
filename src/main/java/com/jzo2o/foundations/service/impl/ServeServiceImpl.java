@@ -7,6 +7,7 @@ import com.jzo2o.common.expcetions.CommonException;
 import com.jzo2o.common.expcetions.ForbiddenOperationException;
 import com.jzo2o.common.model.PageResult;
 import com.jzo2o.foundations.enums.FoundationStatusEnum;
+import com.jzo2o.foundations.enums.PopularStatusEnum;
 import com.jzo2o.foundations.mapper.RegionMapper;
 import com.jzo2o.foundations.mapper.ServeItemMapper;
 import com.jzo2o.foundations.mapper.ServeMapper;
@@ -234,5 +235,30 @@ public class ServeServiceImpl extends ServiceImpl<ServeMapper, Serve> implements
             throw new CommonException("下架服务失败");
         }
         return baseMapper.selectById(id);
+    }
+
+    @Override
+    @Transactional
+    public void onHot(Long id) {
+        //1.判断区域服务信息是否存在
+        Serve serve = baseMapper.selectById(id);
+        if(ObjectUtil.isNull(serve)){
+            throw new ForbiddenOperationException("区域服务不存在");
+        }
+        //2.判断段区域服务的热门状态，如果是热门则提示已为热门，状态为其它则直接设为热门即可。
+        Integer isHot = serve.getIsHot();
+        if ( isHot == PopularStatusEnum.ONHOT.getStatus()) {
+            throw new ForbiddenOperationException("当前区域服务已经配置为热门");
+        }
+        //3.更新区域服务热门状态为热门
+        boolean update = lambdaUpdate()
+                .eq(Serve::getId, id)
+                .set(Serve::getIsHot, PopularStatusEnum.ONHOT.getStatus())
+                .update();
+        if(!update){
+            throw new CommonException("设置热门服务失败");
+        }
+
+        //todo 两个线程还是可以同时 select 读到 isHot=0，然后一起进入 update。
     }
 }
