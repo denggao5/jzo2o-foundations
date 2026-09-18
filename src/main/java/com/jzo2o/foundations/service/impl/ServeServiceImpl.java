@@ -261,4 +261,29 @@ public class ServeServiceImpl extends ServiceImpl<ServeMapper, Serve> implements
 
         //todo 两个线程还是可以同时 select 读到 isHot=0，然后一起进入 update。
     }
+
+    @Override
+    @Transactional
+    public void offHot(Long id) {
+        //1.判断区域服务信息是否存在
+        Serve serve = baseMapper.selectById(id);
+        if(ObjectUtil.isNull(serve)){
+            throw new ForbiddenOperationException("区域服务不存在");
+        }
+        //2.判断段区域服务的热门状态，如果是非热门则提示已为非热门，状态为热门则直接设为非热门即可。
+        Integer isHot = serve.getIsHot();
+        if ( isHot == PopularStatusEnum.OFFHOT.getStatus()) {
+            throw new ForbiddenOperationException("当前区域服务已经配置为非热门");
+        }
+        //3.更新区域服务热门状态为非热门
+        boolean update = lambdaUpdate()
+                .eq(Serve::getId, id)
+                .set(Serve::getIsHot, PopularStatusEnum.OFFHOT.getStatus())
+                .update();
+        if(!update){
+            throw new CommonException("取消热门服务失败");
+        }
+
+        //todo， 是否应该是只有热门的才能被取消热门？除此之外存在严重的竞态问题，需要和上面的接口业务逻辑一同修改调试
+    }
 }

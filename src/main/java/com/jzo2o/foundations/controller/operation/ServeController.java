@@ -90,5 +90,13 @@ public class ServeController {
         serveService.onHot(id);
     }
 
+    @PutMapping("/offHot/{id}")
+    @ApiOperation("区域服务取消热门")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "id", value = "服务id", required = true, dataTypeClass = Long.class),
+    })
+    public void offHot(@PathVariable("id") Long id) {
+        serveService.offHot(id);
+    }
 
 }
