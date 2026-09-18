@@ -15,7 +15,9 @@ import com.jzo2o.common.model.PageResult;
 import com.jzo2o.foundations.constants.RedisConstants;
 import com.jzo2o.foundations.enums.FoundationStatusEnum;
 import com.jzo2o.foundations.mapper.ServeItemMapper;
+import com.jzo2o.foundations.mapper.ServeMapper;
 import com.jzo2o.foundations.mapper.ServeTypeMapper;
+import com.jzo2o.foundations.model.domain.Serve;
 import com.jzo2o.foundations.model.domain.ServeItem;
 import com.jzo2o.foundations.model.domain.ServeType;
 import com.jzo2o.foundations.model.dto.request.ServeItemPageQueryReqDTO;
@@ -47,6 +49,9 @@ public class ServeItemServiceImpl extends ServiceImpl<ServeItemMapper, ServeItem
 
     @Resource
     private ServeTypeMapper serveTypeMapper;
+
+    @Resource
+    private ServeMapper serveMapper;
 
     /**
      * 服务项新增
@@ -162,10 +167,21 @@ public class ServeItemServiceImpl extends ServiceImpl<ServeItemMapper, ServeItem
         }
 
         //有区域在使用该服务将无法禁用（存在关联的区域服务且状态为上架表示有区域在使用该服务项）
-        //todo
+        LambdaQueryWrapper<Serve> queryWrapper = Wrappers.<Serve>lambdaQuery()
+                .select(Serve::getId) // 只查主键，走索引不回表，性能最优，因为这里只需要看有没有这条记录就行，不用查全部列数据
+                .eq(Serve::getServeItemId, id)
+                .eq(Serve::getSaleStatus, FoundationStatusEnum.ENABLE.getStatus())
+                .last("LIMIT 1");
+        Serve serve = serveMapper.selectOne(queryWrapper);
+        if (ObjectUtil.isNotNull(serve)) {
+            throw new ForbiddenOperationException("有区域在使用该服务将无法禁用");
+        }
+
 
         //更新禁用状态
-        LambdaUpdateWrapper<ServeItem> updateWrapper = Wrappers.<ServeItem>lambdaUpdate().eq(ServeItem::getId, id).set(ServeItem::getActiveStatus, FoundationStatusEnum.DISABLE.getStatus());
+        LambdaUpdateWrapper<ServeItem> updateWrapper = Wrappers.<ServeItem>lambdaUpdate()
+                .eq(ServeItem::getId, id)
+                .set(ServeItem::getActiveStatus, FoundationStatusEnum.DISABLE.getStatus());
         update(updateWrapper);
     }
 
