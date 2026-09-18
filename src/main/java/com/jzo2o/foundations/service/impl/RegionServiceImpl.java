@@ -14,14 +14,18 @@ import com.jzo2o.foundations.constants.RedisConstants;
 import com.jzo2o.foundations.enums.FoundationStatusEnum;
 import com.jzo2o.foundations.mapper.CityDirectoryMapper;
 import com.jzo2o.foundations.mapper.RegionMapper;
+import com.jzo2o.foundations.mapper.ServeMapper;
 import com.jzo2o.foundations.model.domain.CityDirectory;
 import com.jzo2o.foundations.model.domain.Region;
+import com.jzo2o.foundations.model.domain.Serve;
 import com.jzo2o.foundations.model.dto.request.RegionPageQueryReqDTO;
 import com.jzo2o.foundations.model.dto.request.RegionUpsertReqDTO;
 import com.jzo2o.foundations.model.dto.response.RegionResDTO;
 import com.jzo2o.foundations.service.IConfigRegionService;
 import com.jzo2o.foundations.service.IRegionService;
 import com.jzo2o.mysql.utils.PageUtils;
+import org.apache.ibatis.exceptions.TooManyResultsException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -43,6 +47,9 @@ public class RegionServiceImpl extends ServiceImpl<RegionMapper, Region> impleme
     private IConfigRegionService configRegionService;
     @Resource
     private CityDirectoryMapper cityDirectoryMapper;
+
+    @Resource
+    private ServeMapper serveMapper;
 
 
     /**
@@ -150,6 +157,7 @@ public class RegionServiceImpl extends ServiceImpl<RegionMapper, Region> impleme
             @CacheEvict(value = RedisConstants.CacheName.HOT_SERVE, key = "#id", beforeInvocation = true),
             @CacheEvict(value = RedisConstants.CacheName.SERVE_TYPE, key = "#id", beforeInvocation = true)
     })
+    @Transactional
     public void active(Long id) {
         //区域信息
         Region region = baseMapper.selectById(id);
@@ -159,8 +167,17 @@ public class RegionServiceImpl extends ServiceImpl<RegionMapper, Region> impleme
         if (!(FoundationStatusEnum.INIT.getStatus() == activeStatus || FoundationStatusEnum.DISABLE.getStatus() == activeStatus)) {
             throw new ForbiddenOperationException("草稿或禁用状态方可启用");
         }
-        //如果需要启用区域，需要校验该区域下是否有上架的服务
-        //todo
+
+        //校验该区域下是否有上架的服务
+        LambdaQueryWrapper<Serve> serveQuery = Wrappers.<Serve>lambdaQuery()
+                .eq(Serve::getRegionId, id)
+                .eq(Serve::getSaleStatus, FoundationStatusEnum.ENABLE.getStatus())
+                .last("LIMIT 1"); // 只查一条，找到就停
+        Serve serve = serveMapper.selectOne(serveQuery); //结果集为0返回 `null`,1返回这条对象，>1直接抛出`TooManyResultsException`异常
+        if (serve == null) {
+            throw new ForbiddenOperationException("该区域下不存在上架的服务，无法启用区域");
+        }
+
 
         //更新启用状态
         LambdaUpdateWrapper<Region> updateWrapper = Wrappers.<Region>lambdaUpdate()
